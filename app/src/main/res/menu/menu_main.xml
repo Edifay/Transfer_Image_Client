@@ -1,0 +1,24 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="fr.arnaud.transfer_image_client.MainActivity">
+    <item
+        android:id="@+id/passwordManage_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orderInCategory="100"
+        android:title="Manage Password"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/ipManage_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orderInCategory="100"
+        android:title="Manage Address"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/portManage_button"
+        android:orderInCategory="100"
+        android:title="Manage Port"
+        app:showAsAction="never" />
+</menu>
