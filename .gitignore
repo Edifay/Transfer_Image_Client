@@ -28,3 +28,6 @@ replay_pid*
 .gradle
 app/src/main/assets/keyStore/CLE_PUBLIC.bks
 app/src/main/assets/keyStore/mdp_public.txt
+gradlew.bat
+gradle/wrapper/gradle-wrapper.properties
+gradlew
