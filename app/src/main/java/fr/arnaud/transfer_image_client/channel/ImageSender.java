@@ -1,6 +1,7 @@
 package fr.arnaud.transfer_image_client.channel;
 
 
+import static fr.arnaud.transfer_image_client.MainActivity.runUi;
 import static fr.arnaud.transfer_image_client.transfer.utils.Utils.byteToMegaByte;
 
 import java.io.IOException;
@@ -30,25 +31,40 @@ public class ImageSender {
     }
 
     private static int totalRead = 0;
+    private static long currentReset;
 
     public void send(final FragmentFirstBinding binding) throws IOException, InterruptedException, ClassNotFoundException {
         final AtomicInteger i = new AtomicInteger(0);
 
         new Thread(() -> {
-            while (i.get() + 1 < needed.size()) {
-                try {
+            try {
+                currentReset = System.currentTimeMillis();
+                while (i.get() + 1 < needed.size()) {
                     Thread.sleep(1000);
-                    binding.status.setText(((int) byteToMegaByte(totalRead) * 8) + "Mbits/s");
-                    totalRead = 0;
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    System.out.println("SETTING : " + totalRead);
+                    if (i.get() + 1 < needed.size())
+                        runUi(() -> {
+                            try {
+                                binding.status.setText((int) (byteToMegaByte(totalRead) / ((System.currentTimeMillis() - currentReset) / 1000f)) + " MB/s");
+                                totalRead = 0;
+                                currentReset = System.currentTimeMillis();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }).start();
 
         for (; i.get() < needed.size(); i.incrementAndGet()) {
-            binding.current.setText((i.get() + 1) + "");
-            binding.progressBar.setProgress((int) (((float) (i.get() + 1) / needed.size()) * 100), true);
+
+            runUi(() -> {
+                binding.current.setText((i.get() + 1) + "");
+                binding.progressBar.setProgress((int) (((float) (i.get() + 1) / needed.size()) * 100), true);
+            });
+
             if (owned.contains(needed.get(i.get())))
                 sendImage(needed.get(i.get()));
             else
@@ -61,8 +77,7 @@ public class ImageSender {
         final int size = in.available();
         byte[] buf = new byte[size < PACKET_SIZE ? 0 : PACKET_SIZE];
 
-        if (size >= PACKET_SIZE)
-            printStatus(descriptor, size, size);
+        if (size >= PACKET_SIZE) printStatus(descriptor, size, size);
 
         while (in.available() > PACKET_SIZE) {
             in.read(buf);

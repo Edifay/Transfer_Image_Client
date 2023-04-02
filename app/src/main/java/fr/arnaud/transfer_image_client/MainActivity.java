@@ -90,4 +90,8 @@ public class MainActivity extends AppCompatActivity {
                 123);
     }
 
+    public static void runUi(final Runnable runnable) {
+        MainActivity.activity.runOnUiThread(runnable);
+    }
+
 }

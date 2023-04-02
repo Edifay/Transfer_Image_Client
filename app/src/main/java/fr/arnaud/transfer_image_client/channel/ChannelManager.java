@@ -1,5 +1,6 @@
 package fr.arnaud.transfer_image_client.channel;
 
+import static fr.arnaud.transfer_image_client.MainActivity.runUi;
 import static fr.arnaud.transfer_image_client.transfer.TransferManager.sleepABit;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 
 import apifornetwork.tcp.RunnableParamPacket;
 import apifornetwork.tcp.Secure.SecureClientTCP;
+import fr.arnaud.transfer_image_client.MainActivity;
 import fr.arnaud.transfer_image_client.channel.utils.CertLoader;
 import fr.arnaud.transfer_image_client.channel.utils.PType;
 import fr.arnaud.transfer_image_client.databinding.FragmentFirstBinding;
@@ -25,6 +27,7 @@ public class ChannelManager {
     private final ArrayList<ImageDescriptor> owned;
     private final SecureClientTCP channel;
     private final CertLoader.CertConfiguration config;
+
 
     public ChannelManager() {
         this.settings = null;
@@ -47,8 +50,7 @@ public class ChannelManager {
         this.channel.startListen();
 
         try {
-
-            binding.status.setText("Shaking Server...");
+            runUi(() -> binding.status.setText("Shaking Server..."));
 
             System.out.println("Starting HandShake.");
             HandShake handShake = new HandShake(this.channel, settings, owned);
@@ -59,30 +61,37 @@ public class ChannelManager {
                 System.out.println("HandShake success");
             else {
                 System.err.println("HandShake failed ! Wrong password.");
-                binding.status.setText("Wrong password.");
+                runUi(() -> binding.status.setText("Wrong password."));
                 this.channel.close();
                 return;
             }
 
-            binding.status.setText(data.needed.size() + " images needed.");
-            binding.total.setText(data.needed.size() + "");
+            runUi(() -> {
+                binding.status.setText(data.needed.size() + " images needed.");
+                binding.total.setText(data.needed.size() + "");
+            });
             sleepABit();
 
             System.out.println("Transfer will fetch " + data.needed.size() + " files.");
 
-            ImageSender sender = new ImageSender(channel, owned, data.needed);
-            sender.send(binding);
-
+            try {
+                ImageSender sender = new ImageSender(channel, owned, data.needed);
+                sender.send(binding);
+            } catch (Exception e) {
+                runUi(() -> binding.status.setText("Erreur d'envois : " + e.getMessage()));
+                e.printStackTrace();
+            }
             System.out.println("Transfer complete.");
 
             if (!channel.getSocket().isClosed())
                 channel.waitForPacket(PType.CLOSE);
             channel.removePacketEvent(this.quitEvent);
 
-            binding.status.setText("Transfer complete.");
+            runUi(() -> binding.status.setText("Transfer complete."));
 
         } catch (IOException | InterruptedException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            runUi(() -> binding.status.setText("Internal Error : " + e.getMessage()));
+            e.printStackTrace();
         }
     }
 
@@ -98,7 +107,7 @@ public class ChannelManager {
                     channel.close();
                     System.out.println("Channel closed.");
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
             }
         };

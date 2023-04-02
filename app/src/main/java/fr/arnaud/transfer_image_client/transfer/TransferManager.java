@@ -1,5 +1,6 @@
 package fr.arnaud.transfer_image_client.transfer;
 
+import static fr.arnaud.transfer_image_client.MainActivity.runUi;
 import static fr.arnaud.transfer_image_client.transfer.utils.Utils.getDateFromSnap;
 import static fr.arnaud.transfer_image_client.transfer.utils.Utils.isSnapchatFile;
 
@@ -27,35 +28,42 @@ public class TransferManager {
     private static ChannelManager manager;
 
     public static void transfer(final FragmentFirstBinding binding) {
-        binding.current.setText(0 + "");
-        binding.total.setText(0 + "");
-        binding.progressBar.setProgress(0, true);
 
         if (!canTransfer()) {
             System.err.println("Already transferring !");
-            MainActivity.activity.runOnUiThread(() -> Toast.makeText(MainActivity.activity, "Transfer en cour...", Toast.LENGTH_SHORT).show());
+            runUi(() -> Toast.makeText(MainActivity.activity, "Transfer en cour...", Toast.LENGTH_SHORT).show());
             return;
         }
-
+        // EMPTY MANAGER TO SET TRANSFER ACTIVE
         manager = new ChannelManager();
 
+        System.out.println("Current thread : " + Thread.currentThread().getName());
+
         MainActivity.activity.askPerms();
-        binding.status.setText("Loading Images...");
+
+        runUi(() -> {
+            binding.current.setText(0 + "");
+            binding.total.setText(0 + "");
+            binding.progressBar.setProgress(0, true);
+        });
+
+        runUi(() -> binding.status.setText("Loading Images..."));
 
         System.out.println("Fetching all medias.");
         ArrayList<ImageDescriptor> descriptors = getDescriptorsFromMedias(Utils.getAllMedias());
         System.out.println("Total of " + descriptors.size() + " medias.");
 
-        binding.status.setText(descriptors.size() + " images detected.");
+        runUi(() -> binding.status.setText(descriptors.size() + " images detected."));
 
         sleepABit();
 
+        runUi(() -> binding.status.setText("Connexion au serveur..."));
         final CertLoader loader = new CertLoader();
         try {
             manager = new ChannelManager(MainActivity.settings, loader.getConfig(), descriptors);
-        } catch (CertificateException | IOException | NoSuchAlgorithmException | KeyStoreException |
-                 KeyManagementException e) {
+        } catch (Exception e) {
             System.err.println("Impossible de ce connecter au serveur ! " + e.getMessage());
+            runUi(() -> binding.status.setText(e.getMessage()));
             e.printStackTrace();
             manager = null;
         }
@@ -63,9 +71,13 @@ public class TransferManager {
         if (manager == null)
             return;
 
-        manager.exchange(binding);
+        try {
+            manager.exchange(binding);
+            runUi(() -> binding.progressBar.setProgress(100, true));
 
-        binding.progressBar.setProgress(100, true);
+        } catch (Exception e) {
+            runUi(() -> binding.status.setText("Erreur interne : " + e.getMessage()));
+        }
 
     }
 
@@ -73,7 +85,7 @@ public class TransferManager {
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
