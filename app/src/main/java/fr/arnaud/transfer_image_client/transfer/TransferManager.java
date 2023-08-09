@@ -82,11 +82,11 @@ public class TransferManager {
     }
 
     public static void sleepABit() {
-        try {
+      /*  try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
+        }*/
     }
 
 

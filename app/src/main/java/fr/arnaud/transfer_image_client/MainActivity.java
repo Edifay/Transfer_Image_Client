@@ -1,7 +1,6 @@
 package fr.arnaud.transfer_image_client;
 
 import android.Manifest;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,18 +12,14 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-import apifornetwork.tcp.client.ClientTCP;
 import fr.arnaud.transfer_image_client.databinding.ActivityMainBinding;
 import fr.arnaud.transfer_image_client.files.FileManager;
 import fr.arnaud.transfer_image_client.files.Settings;
 import fr.arnaud.transfer_image_client.popups.CreatedPopups;
 import fr.arnaud.transfer_image_client.popups.PopupManager;
 
-import android.os.Environment;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
-import android.widget.Toolbar;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         activity = this;
 
         askPerms();

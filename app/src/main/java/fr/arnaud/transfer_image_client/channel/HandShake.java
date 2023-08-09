@@ -1,29 +1,33 @@
 package fr.arnaud.transfer_image_client.channel;
 
+import static fr.arnaud.transfer_image_client.channel.Utils.getByteForObject;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-import apifornetwork.data.packets.Packet;
-import apifornetwork.data.packets.ReceiveSecurePacket;
-import apifornetwork.data.packets.SendSecurePacket;
-import apifornetwork.tcp.SocketMake;
 import fr.arnaud.transfer_image_client.channel.utils.PType;
 import fr.arnaud.transfer_image_client.files.Settings;
 import fr.arnaud.transfer_image_client.transfer.utils.ImageDescriptor;
+import fr.jazer.session.RPacket;
+import fr.jazer.session.SPacket;
+import fr.jazer.session.Session;
 
 public class HandShake {
 
-    private final SocketMake socket;
+    private final Session session;
     private final Settings settings;
     private final ArrayList<ImageDescriptor> owned;
 
-    public HandShake(final SocketMake socket, final Settings settings, final ArrayList<ImageDescriptor> owned) {
-        this.socket = socket;
+    public HandShake(final Session session, final Settings settings, final ArrayList<ImageDescriptor> owned) {
+        this.session = session;
         this.settings = settings;
         this.owned = owned;
     }
@@ -56,17 +60,17 @@ public class HandShake {
     }
 
     private boolean authResult() throws InterruptedException, IOException, ClassNotFoundException {
-        return (boolean) new ObjectInputStream(new ByteArrayInputStream(socket.waitForPacket(PType.PASSWORD_PACKET).getBytesData())).readUnshared();
+        return (boolean) new ObjectInputStream(new ByteArrayInputStream(session.read(PType.PASSWORD_PACKET).getData())).readUnshared();
     }
 
     private void sendPassword() throws IOException {
-        socket.send(new SendSecurePacket(PType.PASSWORD_PACKET, Packet.getByteForObject(settings.getPassword())));
+        session.send(new SPacket(PType.PASSWORD_PACKET).writeString(settings.getPassword()));
     }
 
 
     private ArrayList<ImageDescriptor> receiveImagesDescriptors() throws InterruptedException, IOException, ClassNotFoundException {
-        final ReceiveSecurePacket packetDescriptorList = socket.waitForPacket(PType.EXCHANGING_IMAGES_DESCRIPTOR);
-        final String json = (String) new ObjectInputStream(new ByteArrayInputStream(packetDescriptorList.getBytesData())).readUnshared();
+        final RPacket packetDescriptorList = session.read(PType.EXCHANGING_IMAGES_DESCRIPTOR);
+        final String json = packetDescriptorList.readString();
 
         return new ObjectMapper().readValue(json, new TypeReference<ArrayList<ImageDescriptor>>() {
         });
@@ -74,10 +78,10 @@ public class HandShake {
 
     private void writeImagesDescriptors(final ArrayList<ImageDescriptor> descriptors) throws IOException {
         final String json = new ObjectMapper().writeValueAsString(descriptors);
-        socket.send(new SendSecurePacket(PType.EXCHANGING_IMAGES_DESCRIPTOR, Packet.getByteForObject(json)));
+        session.send(new SPacket(PType.EXCHANGING_IMAGES_DESCRIPTOR).writeString(json));
     }
 
     private void sendAllOk() throws IOException {
-        socket.send(new SendSecurePacket(PType.COMFIRM, Packet.getByteForObject(true)));
+        session.send(new SPacket(PType.COMFIRM, getByteForObject(true)));
     }
 }

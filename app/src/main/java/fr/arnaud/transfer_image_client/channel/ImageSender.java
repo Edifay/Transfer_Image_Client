@@ -7,25 +7,30 @@ import static fr.arnaud.transfer_image_client.transfer.utils.Utils.byteToMegaByt
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import apifornetwork.data.packets.SendSecurePacket;
-import apifornetwork.tcp.SocketMake;
 import fr.arnaud.transfer_image_client.channel.utils.PType;
 import fr.arnaud.transfer_image_client.databinding.FragmentFirstBinding;
 import fr.arnaud.transfer_image_client.transfer.utils.ImageDescriptor;
 import fr.arnaud.transfer_image_client.transfer.utils.Utils;
+import fr.jazer.session.SPacket;
+import fr.jazer.session.Session;
 
 public class ImageSender {
 
-    private final int PACKET_SIZE = 10000000;
+    private final int PACKET_SIZE = 4000000;
 
-    private final SocketMake socket;
+    private final BlockingQueue<SPacket> packetBuffer = new LinkedBlockingQueue<>();
+
+    private boolean endLoad;
+    private final Session socket;
     private final ArrayList<ImageDescriptor> owned;
     private final ArrayList<ImageDescriptor> needed;
 
-    public ImageSender(final SocketMake socket, final ArrayList<ImageDescriptor> owner, final ArrayList<ImageDescriptor> needed) {
-        this.socket = socket;
+    public ImageSender(final Session session, final ArrayList<ImageDescriptor> owner, final ArrayList<ImageDescriptor> needed) {
+        this.socket = session;
         this.owned = owner;
         this.needed = needed;
     }
@@ -35,6 +40,7 @@ public class ImageSender {
 
     public void send(final FragmentFirstBinding binding) throws IOException, InterruptedException, ClassNotFoundException {
         final AtomicInteger i = new AtomicInteger(0);
+        this.endLoad = false;
 
         new Thread(() -> {
             try {
@@ -58,6 +64,20 @@ public class ImageSender {
             }
         }).start();
 
+        Thread sender = new Thread(() -> {
+            while (!this.endLoad || this.packetBuffer.size() != 0) {
+                try {
+                    SPacket packet = packetBuffer.take();
+                    totalRead += packet.getData().length;
+                    socket.send(packet);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        if (needed.size() != 0)
+            sender.start();
+
         for (; i.get() < needed.size(); i.incrementAndGet()) {
 
             runUi(() -> {
@@ -70,6 +90,9 @@ public class ImageSender {
             else
                 System.exit(-1);
         }
+
+        this.endLoad = true;
+        sender.join();
     }
 
     private void sendImage(final ImageDescriptor descriptor) throws IOException {
@@ -80,22 +103,31 @@ public class ImageSender {
         if (size >= PACKET_SIZE) printStatus(descriptor, size, size);
 
         while (in.available() > PACKET_SIZE) {
-            in.read(buf);
+            while (packetBuffer.size() > 10) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+            }
+            int val = in.read(buf);
             sendBuff(buf);
             printStatus(descriptor, in.available(), size);
-            totalRead += PACKET_SIZE;
         }
 
+        while (packetBuffer.size() > 10) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
+        }
         buf = new byte[in.available()];
         in.read(buf);
         sendBuff(buf);
         printStatus(descriptor, in.available(), size);
-        totalRead += buf.length;
-
     }
 
-    public void sendBuff(final byte[] buff) throws IOException {
-        socket.send(new SendSecurePacket(PType.RECEIVING_DATA, buff));
+    public void sendBuff(final byte[] buff) {
+        this.packetBuffer.add(new SPacket(PType.RECEIVING_DATA, buff.clone()));
     }
 
     public static void printStatus(final ImageDescriptor descriptor, final int current, final int total) {

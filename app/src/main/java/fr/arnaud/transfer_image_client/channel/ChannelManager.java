@@ -10,22 +10,25 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 
-import apifornetwork.tcp.RunnableParamPacket;
-import apifornetwork.tcp.Secure.SecureClientTCP;
-import fr.arnaud.transfer_image_client.MainActivity;
 import fr.arnaud.transfer_image_client.channel.utils.CertLoader;
 import fr.arnaud.transfer_image_client.channel.utils.PType;
 import fr.arnaud.transfer_image_client.databinding.FragmentFirstBinding;
 import fr.arnaud.transfer_image_client.files.Settings;
 import fr.arnaud.transfer_image_client.transfer.utils.ImageDescriptor;
+import fr.jazer.session.RPacket;
+import fr.jazer.session.Session;
+import fr.jazer.session.stream.Receiver;
+import fr.jazer.session.utils.crypted.CertFormat;
+import fr.jazer.session.utils.crypted.ClientCertConfig;
+import fr.jazer.session.utils.crypted.SecureType;
 
 public class ChannelManager {
 
-    private RunnableParamPacket quitEvent;
+    private Receiver<RPacket> quitEvent;
 
     private final Settings settings;
     private final ArrayList<ImageDescriptor> owned;
-    private final SecureClientTCP channel;
+    private final Session channel;
     private final CertLoader.CertConfiguration config;
 
 
@@ -41,14 +44,14 @@ public class ChannelManager {
         this.config = config;
         this.owned = descriptors;
 
-        this.channel = new SecureClientTCP(settings.getIp(), settings.getPort(), config.stream, config.password);
+        this.channel = new Session();
+        ClientCertConfig options = new ClientCertConfig(config.stream, config.password, SecureType.TLSv1_2, CertFormat.BKS);
+        this.channel.connect(settings.getIp(), settings.getPort(), options);
         setupQuitEvent();
-        this.channel.addPacketEvent(quitEvent);
+        this.channel.addPacketListener(PType.CLOSE, quitEvent);
     }
 
     public void exchange(final FragmentFirstBinding binding) {
-        this.channel.startListen();
-
         try {
             runUi(() -> binding.status.setText("Shaking Server..."));
 
@@ -62,7 +65,7 @@ public class ChannelManager {
             else {
                 System.err.println("HandShake failed ! Wrong password.");
                 runUi(() -> binding.status.setText("Wrong password."));
-                this.channel.close();
+                this.channel.destroy();
                 return;
             }
 
@@ -84,8 +87,8 @@ public class ChannelManager {
             System.out.println("Transfer complete.");
 
             if (!channel.getSocket().isClosed())
-                channel.waitForPacket(PType.CLOSE);
-            channel.removePacketEvent(this.quitEvent);
+                channel.read(PType.CLOSE);
+            channel.removePacketListener(this.quitEvent);
 
             runUi(() -> binding.status.setText("Transfer complete."));
 
@@ -101,15 +104,8 @@ public class ChannelManager {
 
     public void setupQuitEvent() {
         this.quitEvent = packet -> {
-            if (packet.getPacketNumber() == PType.CLOSE) {
-                try {
-                    channel.stopListen();
-                    channel.close();
-                    System.out.println("Channel closed.");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            channel.destroy();
+            System.out.println("Channel closed.");
         };
     }
 
