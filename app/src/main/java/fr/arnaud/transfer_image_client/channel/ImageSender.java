@@ -103,22 +103,9 @@ public class ImageSender {
         if (size >= PACKET_SIZE) printStatus(descriptor, size, size);
 
         while (in.available() > PACKET_SIZE) {
-            while (packetBuffer.size() > 10) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                }
-            }
             int val = in.read(buf);
             sendBuff(buf);
             printStatus(descriptor, in.available(), size);
-        }
-
-        while (packetBuffer.size() > 10) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-            }
         }
         buf = new byte[in.available()];
         in.read(buf);
@@ -127,6 +114,12 @@ public class ImageSender {
     }
 
     public void sendBuff(final byte[] buff) {
+        while (packetBuffer.size() > 10) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+            }
+        }
         this.packetBuffer.add(new SPacket(PType.RECEIVING_DATA, buff.clone()));
     }
 
