@@ -56,9 +56,10 @@ public class ChannelManager {
             runUi(() -> binding.status.setText("Shaking Server..."));
 
             System.out.println("Starting HandShake.");
+            long ms = System.currentTimeMillis();
             HandShake handShake = new HandShake(this.channel, settings, owned);
             HandShake.HandShakeData data = handShake.shake();
-            System.out.println("HandShake Finished.");
+            System.out.println("HandShake Complete in " + (System.currentTimeMillis() - ms) + ".");
 
             if (data.isAuth)
                 System.out.println("HandShake success");

@@ -49,9 +49,10 @@ public class TransferManager {
 
         runUi(() -> binding.status.setText("Loading Images..."));
 
+        long ms = System.currentTimeMillis();
         System.out.println("Fetching all medias.");
         ArrayList<ImageDescriptor> descriptors = getDescriptorsFromMedias(Utils.getAllMedias());
-        System.out.println("Total of " + descriptors.size() + " medias.");
+        System.out.println("Total of " + descriptors.size() + " medias in " + (System.currentTimeMillis() - ms) + "ms.");
 
         runUi(() -> binding.status.setText(descriptors.size() + " images detected."));
 
