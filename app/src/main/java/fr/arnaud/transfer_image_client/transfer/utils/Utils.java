@@ -79,7 +79,7 @@ public class Utils {
         return new BufferedInputStream(Files.newInputStream(Paths.get(descriptor.path)));
     }
 
-    public static float byteToMegaByte(int value) {
+    public static float byteToMegaByte(long value) {
         return value / 1000000f;
     }
 

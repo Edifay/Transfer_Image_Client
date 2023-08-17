@@ -96,7 +96,7 @@ public class TransferManager {
         File f;
         for (String s : medias) {
             f = new File(s);
-            int length = (int) f.length();
+            long length = f.length();
             if (length != 0)
                 descriptors.add(new ImageDescriptor(s, length, getDateFromSnap(f)));
         }

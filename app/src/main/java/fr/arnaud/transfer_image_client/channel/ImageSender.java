@@ -97,13 +97,14 @@ public class ImageSender {
 
     private void sendImage(final ImageDescriptor descriptor) throws IOException {
         final InputStream in = Utils.openStreamFile(descriptor);
-        final int size = in.available();
-        byte[] buf = new byte[size < PACKET_SIZE ? 0 : PACKET_SIZE];
+        final long size = descriptor.size;
+        byte[] buf;
 
         if (size >= PACKET_SIZE) printStatus(descriptor, size, size);
 
         while (in.available() > PACKET_SIZE) {
-            int val = in.read(buf);
+            buf = new byte[PACKET_SIZE];
+            in.read(buf);
             sendBuff(buf);
             printStatus(descriptor, in.available(), size);
         }
@@ -120,10 +121,10 @@ public class ImageSender {
             } catch (InterruptedException e) {
             }
         }
-        this.packetBuffer.add(new SPacket(PType.RECEIVING_DATA, buff.clone()));
+        this.packetBuffer.add(new SPacket(PType.RECEIVING_DATA, buff));
     }
 
-    public static void printStatus(final ImageDescriptor descriptor, final int current, final int total) {
+    public static void printStatus(final ImageDescriptor descriptor, final long current, final long total) {
         System.out.printf(descriptor.getName() + "\t -> \t" + "%.0f" + "/" + "%.0f" + "MB", byteToMegaByte(total - current), byteToMegaByte(total)).println();
     }
 
